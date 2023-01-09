@@ -1,7 +1,19 @@
+//imports daos de sistema para filesistem
+import productosFs from "../fsGestion/daos/productoDaos.js"
+import carritoFS from "../fsGestion/daos/carritoDaos.js"
+//instanciamiento de lo anterior
+const productos = new productosFs
+const carrito = new carritoFS
+//imports de daos de sistema para mongoDb atlas
+import {productosDaosMg, carritoDaosMg, coneccionMongo} from "../MgDb_FireBas_Gestion/modules/moduleIndexMgDb.js"
+//estableciendo conección
+coneccionMongo()
+//instanciamiento de productos y carrito de para las colecciones de mongo
+const productosMongo = new productosDaosMg
+const carritoMongo = new carritoDaosMg
 
-const { carrito, productos} = require("../files/fsGestion");
 
-const express = require("express");
+import express from "express"
 const { Router } = express;
 
 const rutaCarrito = Router();
@@ -11,7 +23,7 @@ rutaCarrito.use(express.urlencoded({ extended: true }));
 
 
 rutaCarrito.get("/:id/productos", async (req, res) => {
-  const id = parseInt(req.params.id);
+  const {id} = req.params
   const listadoCarrito = await carrito.getById(id);
   if (listadoCarrito === null) {
     res.json({ status: `carrito ${id} no encontrado` });
@@ -28,29 +40,48 @@ rutaCarrito.post("/", async (req, res) => {
     tiemstamp: Date.now(),
     productos: [],
   };
-  await carrito.save(newCar);
-  res.json({ id_carrito: carrito.id });
+  const id_car = await carritoMongo.savee(newCar)
+  if(id_car){
+    await carrito.save({id:id_car,...newCar});
+  }
+  res.json({ id_carrito: id_car });
 });
 
+
 rutaCarrito.post("/:id/productos", async (req, res) => {
-  const id = parseInt(req.params.id);
+  const {id} = req.params
   const { idProducto } = req.body;
-  const producto = await productos.getById(idProducto);
-  const carritoIncor = await carrito.getById(id);
-  if (carritoIncor !== null) {
-    carritoIncor.productos.push(producto);
+  //se busca el cliente usando el id en entre los almacenados en archivos txt
+  const carritoIncor = await carrito.getById(id)
+  if (carritoIncor) {
+    //APARTADO DE MONGO
+    //busco el producto en la colección de productos de la colección en atlas
+    const producto = await productosMongo.getById(idProducto);
+    //se agrega producto al cliente en la colección de atlas
+    await carritoMongo.apushProdIdCar(id, producto)
+
+    //APARTADO DE ARCHIVOS TXT
+    //se busca el producto pero en la colección de 
+    const prodTxt = await productos.getById(idProducto)
+    await carritoIncor.productos.push(prodTxt)
+    
     await carrito.update(id, carritoIncor);
+
     res.json({ status: "ok" });
   } else {
     res.json({ status: `carrito ${id} no encontrado, operación imposible` });
   }
 });
 
+
 rutaCarrito.delete("/:id/productos/:id_producto", async (req, res) => {
-  const id = parseInt(req.params.id);
-  const id_producto = parseInt(req.params.id_producto);
+  const {id} = req.params
+  const id_producto = req.params.id_producto;
+  //se busca carrito en archivo txt
   const car = await carrito.getById(id);
-  if (car === null) {
+    //se busca carrito en su respectiva colección respecto a mongo atlas
+  const carrito_modi = await carritoMongo.deleteProdIdCar(id, id_producto)
+  if (car === null && (carrito_modi)) {
     res.json({ status: `carrito ${id} no encontrado, operación imposible` });
   } else {
     if (car.productos.length === 0) {
@@ -74,4 +105,4 @@ rutaCarrito.delete("/:id/productos/:id_producto", async (req, res) => {
   }
 });
 
-exports.rutaCarrito = rutaCarrito;
+export {rutaCarrito};

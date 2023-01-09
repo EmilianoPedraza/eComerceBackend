@@ -1,6 +1,6 @@
-const fs = require("fs");
+import * as fs from 'fs';
 
-class fsGestion {
+export class fsGestion {
   constructor(archivoName) {
     this.archivoName = archivoName;
     this.id = 0;
@@ -24,7 +24,9 @@ class fsGestion {
           listobj.length > 0
             ? (this.id = listobj[listobj.length - 1].id)
             : (this.id = 0);
-          listobj.push({ id: this.aleatori(), ...obj });
+          const id_ = this.aleatori()
+          listobj.push({ id: id_, ...obj });
+          return id_
         } else {
           listobj.push(obj);
         }
@@ -60,9 +62,10 @@ class fsGestion {
   getAll = async () => {
     try {
       const archivo = await fs.promises.readFile(this.archivoName, "utf-8");
-      const archivoParseado = JSON.parse(archivo);
+      const archivoParseado = await JSON.parse(archivo);
       return archivoParseado;
     } catch (error) {
+      console.log("Error en FsGestion-getAll()",error)
       return [];
     }
   };
@@ -141,7 +144,3 @@ class fsGestion {
   };
 }
 
-const carrito = new fsGestion("./src/files/CarFile/carFile.txt");
-const productos = new fsGestion("./src/files/productFile/productFile.txt");
-exports.productos = productos;
-exports.carrito = carrito;

@@ -1,7 +1,7 @@
-const express = require("express");
-const { rutaCarrito } = require("./Routes/carrito");
+import express from 'express';
+import { rutaCarrito } from './Routes/carrito.js';
 //importación de rutas
-const {rutaProductos} = require("./Routes/productos")
+import {rutaProductos} from "./Routes/productos.js"
 
 rutaProductos
 

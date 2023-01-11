@@ -1,16 +1,24 @@
-//imports daos de sistema para filesistem
+//--------------imports daos de sistema para filesistem
 import productosFs from "../fsGestion/daos/productoDaos.js"
 import carritoFS from "../fsGestion/daos/carritoDaos.js"
-//instanciamiento de lo anterior
+//instanciamiento de daos productos y carrito de fileSistem
 const productos = new productosFs
 const carrito = new carritoFS
-//imports de daos de sistema para mongoDb atlas
+//----------imports de daos de sistema para mongoDb atlas
+//import daos carrito de mongo e instanciamiento. Y conección
 import {productosDaosMg, carritoDaosMg, coneccionMongo} from "../MgDb_FireBas_Gestion/modules/moduleIndexMgDb.js"
 //estableciendo conección
 coneccionMongo()
-//instanciamiento de productos y carrito de para las colecciones de mongo
+//instanciamiento de daos de productos y carrito
 const productosMongo = new productosDaosMg
 const carritoMongo = new carritoDaosMg
+
+//----- import de lo que se necestia para gestionar con fire-base
+import { prodsFireBase, carFireBase} from "../MgDb_FireBas_Gestion/modules/moduleIndexFireB.js";
+//instancia productos en fireBase, a diferencia de mongo la coneccion se realiza en la clase instanciada
+const productosFireBase = new prodsFireBase
+const carritoFireBase = new carFireBase
+
 
 
 import express from "express"
@@ -40,8 +48,13 @@ rutaCarrito.post("/", async (req, res) => {
     tiemstamp: Date.now(),
     productos: [],
   };
+  //se almacena primero en atlas y retorna el id
   const id_car = await carritoMongo.savee(newCar)
   if(id_car){
+    //usuando el id retornado se almacena posteriormente en...
+    //clouser firebase
+    await carritoFireBase.saveeFb(newCar, id_car)
+    //archivo.txt
     await carrito.save({id:id_car,...newCar});
   }
   res.json({ id_carrito: id_car });
@@ -60,12 +73,17 @@ rutaCarrito.post("/:id/productos", async (req, res) => {
     //se agrega producto al cliente en la colección de atlas
     await carritoMongo.apushProdIdCar(id, producto)
 
+
     //APARTADO DE ARCHIVOS TXT
     //se busca el producto pero en la colección de 
     const prodTxt = await productos.getById(idProducto)
     await carritoIncor.productos.push(prodTxt)
-    
     await carrito.update(id, carritoIncor);
+
+    //APARTADO FIRESTORE
+    const prodFbObtnido = await productosFireBase.getByIdFb(idProducto)
+    await carritoFireBase.apushProdIdCarFb(id, {id:idProducto,...prodFbObtnido})
+
 
     res.json({ status: "ok" });
   } else {
@@ -79,8 +97,10 @@ rutaCarrito.delete("/:id/productos/:id_producto", async (req, res) => {
   const id_producto = req.params.id_producto;
   //se busca carrito en archivo txt
   const car = await carrito.getById(id);
-    //se busca carrito en su respectiva colección respecto a mongo atlas
+    //se busca y elimina en carrito en base a su respectiva colección respecto a mongo atlas
   const carrito_modi = await carritoMongo.deleteProdIdCar(id, id_producto)
+    //se busca y elimina en carrito en base a su respectiva colección respecto a firebase
+  await carritoFireBase.removeFromCart(id, id_producto)
   if (car === null && (carrito_modi)) {
     res.json({ status: `carrito ${id} no encontrado, operación imposible` });
   } else {

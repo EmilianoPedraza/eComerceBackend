@@ -57,8 +57,8 @@ export default class carritoDaosMg extends MongoGestion{
           if(!obj.id){
             const nuevo = await new this.schema(obj)
             await nuevo.save()
-            const prod = await this.schema.find({_id:nuevo._id}).limit(1)
-            const idRes = await this.formatId(prod, 1)
+            const carInDb = await this.schema.find({_id:nuevo._id}).limit(1)
+            const idRes = await this.formatId(carInDb)
             return idRes.id
           }
           // else{

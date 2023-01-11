@@ -33,9 +33,13 @@ export default class FireBaseGestion {
     try {
       const producto = await this.coleccion.doc(id).get();
       console.log("\nProducto:", id, " -En fireBase.");
-      producto
-        ? console.table(producto.data())
-        : console.log("------no encontrado");
+      if(producto!==undefined){
+        console.table(producto.data())
+        return producto.data()
+      }
+      else{
+        console.log("------no encontrado");
+      }
     } catch (error) {
       console.log("Ërror en FireBaseGestion-getByIdFb():\n", error);
     }
